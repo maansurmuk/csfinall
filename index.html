@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Literacy Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">FinTrack</div>
+            <ul>
+                <li><a href="#dashboard">Dashboard</a></li>
+                <li><a href="#expenses">Expenses</a></li>
+                <li><a href="#statistics">Statistics</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="dashboard" id="dashboard">
+            <h1>Financial Dashboard</h1>
+            <div class="expense-form">
+                <h2>Add New Expense</h2>
+                <form id="expenseForm">
+                    <div class="form-group">
+                        <label for="amount">Amount ($)</label>
+                        <input type="number" id="amount" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select id="category" required>
+                            <option value="groceries">Groceries</option>
+                            <option value="clothing">Clothing</option>
+                            <option value="technology">Technology</option>
+                            <option value="selfcare">Self Care</option>
+                            <option value="utilities">Utilities</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="month">Month</label>
+                        <input type="month" id="month" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <input type="text" id="description" placeholder="Enter expense description" required>
+                    </div>
+                    <button type="submit">Add Expense</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="expenses" id="expenses">
+            <h2>Monthly Expenses</h2>
+            <div class="expense-list">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Amount</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenseTableBody">
+                        <!-- Expenses will be added here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="expense-history" id="history">
+            <h2>Expense History</h2>
+            <div class="history-filters">
+                <div class="form-group">
+                    <label for="monthFilter">Filter by Month</label>
+                    <input type="month" id="monthFilter">
+                </div>
+                <div class="form-group">
+                    <label for="categoryFilter">Filter by Category</label>
+                    <select id="categoryFilter">
+                        <option value="all">All Categories</option>
+                        <option value="groceries">Groceries</option>
+                        <option value="clothing">Clothing</option>
+                        <option value="technology">Technology</option>
+                        <option value="selfcare">Self Care</option>
+                        <option value="utilities">Utilities</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="history-list">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <!-- History items will be added here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="statistics" id="statistics">
+            <h2>Expense Statistics</h2>
+            <div class="stats-container">
+                <div class="total-expenses">
+                    <h3>Total Monthly Expenses</h3>
+                    <p id="totalAmount">$0.00</p>
+                </div>
+                <div class="category-breakdown">
+                    <h3>Category Breakdown</h3>
+                    <div class="pie-chart">
+                        <canvas id="categoryPieChart"></canvas>
+                    </div>
+                    <div class="category-percentages">
+                        <!-- Category percentages will be added here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024 FinTrack - Your Financial Literacy Companion</p>
+    </footer>
+
+    <script>
+        // Initialize expenses array from localStorage or empty array
+        let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+        let pieChart = null;
+        
+        // Set current month as default
+        document.getElementById('month').valueAsDate = new Date();
+
+        // Handle form submission
+        document.getElementById('expenseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const amount = parseFloat(document.getElementById('amount').value);
+            const category = document.getElementById('category').value;
+            const month = document.getElementById('month').value;
+            const description = document.getElementById('description').value;
+
+            const expense = {
+                id: Date.now(),
+                amount,
+                category,
+                month,
+                description,
+                date: new Date().toISOString()
+            };
+
+            expenses.push(expense);
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+            
+            updateExpenseTable();
+            updateStatistics();
+            updateHistory();
+            this.reset();
+            document.getElementById('month').valueAsDate = new Date();
+        });
+
+        // Update expense table
+        function updateExpenseTable() {
+            const tbody = document.getElementById('expenseTableBody');
+            tbody.innerHTML = '';
+            
+            const currentMonth = document.getElementById('month').value;
+            const monthExpenses = expenses.filter(expense => expense.month === currentMonth);
+
+            monthExpenses.forEach(expense => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${new Date(expense.date).toLocaleDateString()}</td>
+                    <td>${expense.category}</td>
+                    <td>$${expense.amount.toFixed(2)}</td>
+                    <td>
+                        <button onclick="deleteExpense(${expense.id})" class="delete-btn">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Update statistics
+        function updateStatistics() {
+            const currentMonth = document.getElementById('month').value;
+            const monthExpenses = expenses.filter(expense => expense.month === currentMonth);
+            
+            // Calculate total
+            const total = monthExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+            document.getElementById('totalAmount').textContent = `$${total.toFixed(2)}`;
+
+            // Calculate category percentages
+            const categories = {};
+            monthExpenses.forEach(expense => {
+                categories[expense.category] = (categories[expense.category] || 0) + expense.amount;
+            });
+
+            // Update pie chart
+            const labels = Object.keys(categories);
+            const data = Object.values(categories);
+            const backgroundColors = [
+                '#1a5f38', // Dark green
+                '#2c7744', // Medium green
+                '#3d8b4f', // Light green
+                '#4da05a', // Lighter green
+                '#5eb565', // Very light green
+                '#6ec070'  // Lightest green
+            ];
+
+            if (pieChart) {
+                pieChart.destroy();
+            }
+
+            const ctx = document.getElementById('categoryPieChart').getContext('2d');
+            pieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderColor: '#ffffff',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1);
+                                    return `${context.label}: $${value.toFixed(2)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Update category percentages text
+            const percentagesDiv = document.querySelector('.category-percentages');
+            percentagesDiv.innerHTML = '';
+
+            Object.entries(categories).forEach(([category, amount]) => {
+                const percentage = (amount / total * 100).toFixed(1);
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <p>${category}: ${percentage}% ($${amount.toFixed(2)})</p>
+                `;
+                percentagesDiv.appendChild(div);
+            });
+        }
+
+        // Update history
+        function updateHistory() {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+            
+            const monthFilter = document.getElementById('monthFilter').value;
+            const categoryFilter = document.getElementById('categoryFilter').value;
+            
+            let filteredExpenses = [...expenses];
+            
+            if (monthFilter) {
+                filteredExpenses = filteredExpenses.filter(expense => expense.month === monthFilter);
+            }
+            
+            if (categoryFilter !== 'all') {
+                filteredExpenses = filteredExpenses.filter(expense => expense.category === categoryFilter);
+            }
+
+            filteredExpenses.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            filteredExpenses.forEach(expense => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${new Date(expense.date).toLocaleDateString()}</td>
+                    <td>${expense.category}</td>
+                    <td>${expense.description}</td>
+                    <td>$${expense.amount.toFixed(2)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Delete expense
+        function deleteExpense(id) {
+            expenses = expenses.filter(expense => expense.id !== id);
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+            updateExpenseTable();
+            updateStatistics();
+            updateHistory();
+        }
+
+        // Add event listeners for filters
+        document.getElementById('monthFilter').addEventListener('change', updateHistory);
+        document.getElementById('categoryFilter').addEventListener('change', updateHistory);
+
+        // Initial update
+        updateExpenseTable();
+        updateStatistics();
+        updateHistory();
+    </script>
+</body>
+</html> 
